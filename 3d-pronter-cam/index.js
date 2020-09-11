@@ -1,12 +1,13 @@
 /* eslint-disable no-console */
 const AvcServer = require('../lib/server')
 const path = require('path')
-const http = require('http')
-// const WebSocketServer = require('uws').Server
-const { WebSocketServer } = require('@clusterws/cws')
-// require('uWebSockets.js')
+const https = require('https')
+const fs = require('fs');
+const { WebSocketServer, secureProtocol } = require('@clusterws/cws')
 const net = require('net')
 const spawn = require('child_process').spawn
+
+const blinkstick = require('blinkstick')
 
 const useRaspivid = process.argv.includes('raspivid')
 const width = 1280
@@ -19,10 +20,83 @@ app.use(express.static(path.resolve(__dirname, 'html')))
 // serve the player
 app.use(express.static(path.resolve(__dirname, '../lib')))
 
-const server = http.createServer(app)
+var _autoTurnOffTimerID = null;
+
+function AutoTurnOffLights()
+{
+  if (_autoTurnOffTimerID != null)
+    clearTimeout(_autoTurnOffTimerID);
+
+  _autoTurnOffTimerID = setTimeout(TurnOffLights.bind(null, "automated shut-off"), 60000);
+}
+
+function ChangeLights(intensity, caller)
+{
+  console.log("Turning lights %s for %s", intensity == 0 ? "off" : "on", caller);
+
+  var led = blinkstick.findFirst();
+
+  var index = 0;
+
+  function ChangeNextLight()
+  {
+    led.setColor(intensity, intensity, intensity, { "channel": 0, "index": index });
+
+    index++;
+
+    if (index < 8)
+      setTimeout(ChangeNextLight, 75);
+  }
+
+  ChangeNextLight();
+}
+
+function TurnOnLights(caller)
+{
+  ChangeLights(255, caller);
+  AutoTurnOffLights();
+}
+
+function TurnOffLights(caller)
+{
+  ChangeLights(0, caller);
+}
+
+app.get(
+  '/api/lights/on',
+  function (req, res)
+  {
+    TurnOnLights(req.connection.remoteAddress);
+
+    res.setHeader("Connection", "close");
+    res.write("Doing it");
+    res.end();
+  });
+
+app.get(
+  '/api/lights/off',
+  function (req, res)
+  {
+    TurnOffLights(req.connection.remoteAddress);
+
+    res.setHeader("Connection", "close");
+    res.write("Doing it");
+    res.end();
+  });
+
+const serverOptions =
+  {
+    key: fs.readFileSync("C:/Users/JDG/.lego/certificates/laliari.logiclrd.cx.key"),
+    cert: fs.readFileSync("C:/Users/JDG/.lego/certificates/laliari.logiclrd.cx.crt"),
+    secureProtocol
+  };
+
+console.log(serverOptions);
+
+const server = https.createServer(serverOptions, app)
 
 // init web socket
-const wss = new WebSocketServer({ /* port: 3333 */ server })
+const wss = new WebSocketServer({ server })
 // init the avc server.
 const avcServer = new AvcServer(wss, width, height)
 
@@ -80,7 +154,7 @@ if (useRaspivid) {
     this.tcpServer.listen(5000, '0.0.0.0')
 }
 
-server.listen(8081)
+server.listen(8887)
 
 // if not using raspivid option than use one of this to stream
 // ffmpeg OSX

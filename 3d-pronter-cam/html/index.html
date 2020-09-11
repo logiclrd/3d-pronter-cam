@@ -1,0 +1,151 @@
+<html prefix="og: https://ogp.me/ns#">
+  <head>
+    <title>3D Pronter Cam</title>
+    <meta property="og:title" content="3D Pronter Cam" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://laliari.logiclrd.cx:8888/AnimatedBanner.gif" />
+    <meta property="og:image:width" content="600" />
+    <meta property="og:image:height" content="315" />
+    <meta property="og:url" content="https://laliari.logiclrd.cx:8888/" />
+    <meta property="og:video:actor" content="3D Pronter" />
+    <style>
+
+      #video-box {
+        background-color: black;
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: calc(100% * 9 / 16);
+        border: 1px solid black;
+      }
+      #video-box > canvas{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .flexbox {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .video-aligner {
+        width: 70%;
+      }
+
+      @media only screen and (max-width: 800px) {
+        .video-aligner {
+          width: 100%;
+        }
+      }
+
+      body
+      {
+        background: #172EF4;
+      }
+
+      .heading
+      {
+        margin-top: 2em;
+        display: flex;
+        align-items: center;
+        width: 70%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .heading *
+      {
+        flex-grow: 1;
+        text-align: center;
+      }
+
+      .heading .left
+      {
+        flex-grow: 0;
+        width: 120px;
+        text-align: left;
+      }
+
+      .heading .right
+      {
+        flex-grow: 0;
+        width: 120px;
+        text-align: right;
+      }
+    </style>
+    <script type="text/javascript">
+      function TurnLights(status)
+      {
+        var req = new XMLHttpRequest();
+
+        req.onload = function() { req.abort(); }
+
+        req.open("GET", "/api/lights/" + status, true);
+        req.send()
+      }
+
+      function TurnLightsOn()
+      {
+        TurnLights("on");
+      }
+
+      function TurnLightsOff()
+      {
+        TurnLights("off");
+      }
+    </script>
+  </head>
+  <body>
+    <div class="heading">
+      <div class="left"><img src="HotEndAndBed.png" /></div>
+      <div class="middle"><img src="3DPronter.png" alt="3D Pronter" /></div>
+      <div class="right"><img src="FanAnim.gif" /></div>
+    </div>
+    <div class="flexbox">
+    <div class="video-aligner">
+      <div id="video-box">
+        <canvas id='cam' >
+      </div>
+      <div style="float: right; margin-top: 4px">
+        <img src="light-on.svg" style="width: 24px; height: 24px" onclick="TurnLightsOn()" />
+        <img src="light-off.svg" style="width: 24px; height: 24px" onclick="TurnLightsOff()" />
+      </div>
+    </div>
+  </div>
+    
+
+  <!-- provide WSAvcPlayer -->
+    <script type="text/javascript" src="WSAvcPlayer.js">;</script>
+    
+    <script type="text/javascript">
+      var canvas = document.getElementById('cam')
+      // Create h264 player
+      var wsavc = new WSAvcPlayer.default({useWorker:true});
+      document.getElementById('video-box').appendChild(wsavc.AvcPlayer.canvas)
+      //expose instance for button callbacks
+      window.wsavc = wsavc;
+      
+      var uri = "wss://" + document.location.host;
+
+      wsavc.connect(uri);
+
+      wsavc.on('disconnected',()=>console.log('WS Disconnected'))
+      wsavc.on('connected',()=>console.log('WS connected'))
+      
+
+      wsavc.on('resized',(payload)=>{
+        console.log('resized', payload)
+        const vb = document.getElementById('video-box')
+
+        vb.style = `padding-bottom: calc( 100% * ${payload.height} / ${ payload.width })`
+      })
+
+      wsavc.on('stream_active',active=>console.log('Stream is ',active?'active':'offline'))
+      wsavc.on('custom_event_from_server',event=>console.log('got event from server', event))
+
+    </script>
+    
+  </body>
+</html>
