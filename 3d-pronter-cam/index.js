@@ -32,7 +32,7 @@ function AutoTurnOffLights()
 
 function ChangeLights(intensity, caller)
 {
-  console.log("Turning lights %s for %s", intensity == 0 ? "off" : "on", caller);
+  console.log("[" + new Date() + "] Turning lights %s for %s", intensity == 0 ? "off" : "on", caller);
 
   var led = blinkstick.findFirst();
 
